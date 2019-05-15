@@ -2,13 +2,17 @@
 #include <GL/glut.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <time.h>
 
 /* Definisemo granice parametara povrsi */
 #define U_FROM -50
 #define V_FROM -50
 #define U_TO 50
 #define V_TO 50
-
+/* Definisemo granice table*/
+#define X_WALL 4.5
+#define Z_WALL 4.7
 /* Definisemo osobine tajmera */
 #define TIMER_INTERVAL 10
 #define TIMER_ID 0
@@ -24,23 +28,26 @@ static void on_reshape(int width, int height);
 static void on_display(void);
 static void on_timer(int);
 
-static void keys_press(bool k[]);
-
 /* Deklaracija funckija*/
 void plot_function();
 void set_vertex_and_normal(float u, float v);
 void r2_function();
+void coins();
+void generate_coin();
+
+static void keys_press(bool k[]);
 
 bool keys[256];                 /* Niz za multiple keypress */
-static float x_axis, z_axis;    /* parametri za pomeranje igraca po tabli*/
-static float t;                 /* Proteklo vreme */
+static float x_axis, z_axis;    /* Parametri za pomeranje igraca po tabli*/
+static float x_coin, z_coin;     /* Koordinate poena*/
+static float t = 0;                 /* Proteklo vreme */
 static int animation_ongoing;   /* flag za animaciju (jos uvek ne iskoriscen)*/
 
 int main(int argc, char **argv)
 {
     /* Inicijalizacija promenljivih */
-    t = 0;
-
+    srand(time(NULL));
+    generate_coin();
     /* Inicijalizacija Glut-a */
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
@@ -79,14 +86,26 @@ void arrow_keys_up(int key, int x, int y){
 }
 static void keys_press(bool k[]){
 
-  if(k[GLUT_KEY_UP])
-    z_axis -= 0.1;
-  if(k[GLUT_KEY_DOWN])
-    z_axis += 0.1;
-  if(k[GLUT_KEY_LEFT])
-    x_axis -= 0.1;
-  if(k[GLUT_KEY_RIGHT])
-    x_axis += 0.1;
+  if(k[GLUT_KEY_UP]){
+    if(z_axis <= -Z_WALL);
+    else
+      z_axis -= 0.1;
+  }
+  if(k[GLUT_KEY_DOWN]){
+    if(z_axis >= Z_WALL);
+    else
+      z_axis += 0.1;
+  }
+  if(k[GLUT_KEY_LEFT]){
+    if(x_axis < -X_WALL);
+    else
+      x_axis -= 0.1;
+  }
+  if(k[GLUT_KEY_RIGHT]){
+    if(x_axis > X_WALL);
+    else
+      x_axis += 0.1;
+  }
 
   glutPostRedisplay();
 }
@@ -105,7 +124,6 @@ static void on_keyboard(unsigned char key, int x, int y)
         t = 0;
         glutPostRedisplay();
         break;
-
     }
 }
 
@@ -184,17 +202,38 @@ static void on_display(void)
     /* Kreiraju se objekati */
     plot_function();
     r2_function();
-
+    coins();
     /* Funkcija za kretanje */
     keys_press(keys);
 
     /* Nova slika se salje na ekran */
     glutSwapBuffers();
 }
+void generate_coin(){
+  x_coin = (double)rand()/RAND_MAX*2.0*X_WALL-X_WALL;
+  z_coin = (double)rand()/RAND_MAX*2.0*Z_WALL-Z_WALL;
+}
+void coins(){
 
+  GLfloat c_ambient[] = { 0.8, 0.7, 0, 1 };
+  GLfloat c_diffuse[] = { 0.4, 0.6, 0.1, 1 };
+  GLfloat c_specular[] = { 0.7, 0.7, 0, 1 };
+
+  glPushMatrix();
+    glTranslatef(x_coin, 0.3, z_coin);
+    glRotatef(t, 0, 1, 0);
+    glScalef(1,1,0.2);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, c_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, c_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, c_specular);
+    glutSolidSphere(0.3, 50,50);
+  glPopMatrix();
+
+
+}
 void r2_function(){
   /*
-  TODO: -doraditi figuru sa kojom se krece
+  TODO: -doraditi figuru za kretanje
         -dodati teksture
   */
   GLfloat r2_ambient[] = { 0.8, 0.1, 0.1, 1 };
