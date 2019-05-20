@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 /* Definisemo granice parametara povrsi */
 #define U_FROM -50
@@ -34,9 +35,13 @@ void set_vertex_and_normal(float u, float v);
 void r2_function();
 void coins();
 void generate_coin();
+void score();
+
+void Scoreboard(char *string,float x,float y,float z);
+char buffer[10];
 
 static void keys_press(bool k[]);
-
+static int c, k, Sc;
 bool keys[256];                 /* Niz za multiple keypress */
 static float x_axis, z_axis;    /* Parametri za pomeranje igraca po tabli*/
 static float x_coin, z_coin;     /* Koordinate poena*/
@@ -47,7 +52,9 @@ int main(int argc, char **argv)
 {
     /* Inicijalizacija promenljivih */
     srand(time(NULL));
-    generate_coin();
+    c = 0;
+    k = 0;
+    Sc = 0;
     /* Inicijalizacija Glut-a */
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
@@ -65,12 +72,13 @@ int main(int argc, char **argv)
     glutDisplayFunc(on_display);
 
 
+
     /* Obavlja se OpenGL inicijalizacija */
     glClearColor(0.1, 0.1, 0.1, 0.1);
     glEnable(GL_DEPTH_TEST);
 
     /* Ukljucujemo normalizaciju vektora normala */
-   glEnable(GL_NORMALIZE);
+    glEnable(GL_NORMALIZE);
 
     /* Program ulazi u glavnu petlju. */
     glutMainLoop();
@@ -140,7 +148,7 @@ static void on_reshape(int width, int height)
     /* Podesava se vidna tacka */
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    gluLookAt(0, 10, 10,
+    gluLookAt(0, 11, 8,
               0, 0, 0,
               0, 1, 0);
 
@@ -199,6 +207,7 @@ static void on_display(void)
 
     glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
 
+
     /* Kreiraju se objekati */
     plot_function();
     r2_function();
@@ -206,12 +215,53 @@ static void on_display(void)
     /* Funkcija za kretanje */
     keys_press(keys);
 
+    score();
+    Scoreboard(buffer, 0,7,2);
+
     /* Nova slika se salje na ekran */
     glutSwapBuffers();
 }
+/* Funkcija koja postavlja x i z koordinate na nasumicnim mestima na tabli */
 void generate_coin(){
   x_coin = (double)rand()/RAND_MAX*2.0*X_WALL-X_WALL;
   z_coin = (double)rand()/RAND_MAX*2.0*Z_WALL-Z_WALL;
+}
+void score(){
+/*Pri svakom sakupljenom poenu poziva se f-ja za postavljanje na novom mestu i uvecava se Score*/
+  if(k == c){
+    generate_coin();
+    Sc = c * 10;
+    c++;
+    sprintf(buffer, "%d", Sc);
+  }
+  if((x_axis>x_coin-0.5 && x_axis<x_coin+0.5) && (z_axis>z_coin-0.5 && z_axis<z_coin+0.5))
+    k++;
+
+}
+/*prosledjuje se string u kome se cuva trenutni rezultat(Sc) i ispisuje se na ekran*/
+void Scoreboard(char *string,float x,float y,float z)
+{
+  GLfloat s_ambient[] = { 1, 0.9, 0.9, 1 };
+
+  glPushMatrix();
+  glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+  glBegin(GL_LINE_LOOP);
+      glVertex2f(-0.5, 6);
+      glVertex2f(0.7, 6);
+      glVertex2f(0.9, 5.5);
+      glVertex2f(-0.7, 5.5);
+  glEnd();
+  glPopMatrix();
+
+  glPushMatrix();
+  glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glRasterPos3f(x, y, z);
+    int len, i;
+    len = (int)strlen(string);
+    for (i = 0; i < len; i++) {
+      glutBitmapCharacter(GLUT_BITMAP_8_BY_13, string[i]);
+    }
+  glPopMatrix();
 }
 void coins(){
 
@@ -239,6 +289,7 @@ void r2_function(){
   GLfloat r2_ambient[] = { 0.8, 0.1, 0.1, 1 };
   GLfloat r2_diffuse[] = { 0.5, 0.5, 0.5, 1 };
   GLfloat r2_specular[] = { 0.6, 0.4, 0.4, 1 };
+  GLfloat s_ambient[] = { 1, 0.9, 0.9, 1 };
 
     glPushMatrix();
       glTranslatef(x_axis, 0.3, z_axis);
@@ -246,6 +297,11 @@ void r2_function(){
       glMaterialfv(GL_FRONT, GL_DIFFUSE, r2_diffuse);
       glMaterialfv(GL_FRONT, GL_SPECULAR, r2_specular);
       glutSolidSphere(0.3, 40, 40);
+      glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+      glTranslatef(0,0.4,0);
+      glRotatef(-5*t, 0, 0, 1);
+      glScalef(1.7,0.2,0.2);
+      glutSolidSphere(0.2,40,40);
     glPopMatrix();
 }
 
