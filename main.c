@@ -35,33 +35,44 @@ void set_vertex_and_normal(float u, float v);
 void r2_function();
 void coins();
 void generate_coin();
+void generate_spikes();
 void score();
+void crash_report();
+void Spikes();
 
-void Scoreboard(char *string,float x,float y,float z);
+void Scoreboard(char *string);
 char buffer[10];
+char string[] = {"Score:\0"};
 
 static void keys_press(bool k[]);
 static int c, k, Sc;
 bool keys[256];                 /* Niz za multiple keypress */
 static float x_axis, z_axis;    /* Parametri za pomeranje igraca po tabli*/
 static float x_coin, z_coin;     /* Koordinate poena*/
-static float t = 0;                 /* Proteklo vreme */
-static int animation_ongoing;   /* flag za animaciju (jos uvek ne iskoriscen)*/
+static float left_spike[2], right_spike[2];   /* Koorinate siljaka*/
+static float top_spike[2], bottom_spike[2];
+static int t = 0;                 /* Proteklo vreme */
+static float direction;
+static int animation_ongoing;   /* flag za animaciju */
+static bool crash;
 
 int main(int argc, char **argv)
 {
     /* Inicijalizacija promenljivih */
     srand(time(NULL));
+      //animation_ongoing = 1;
     c = 0;
     k = 0;
     Sc = 0;
+    direction = 0;
+    crash = false;
     /* Inicijalizacija Glut-a */
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DEPTH | GLUT_DOUBLE);
 
     /* Kreira se prozor */
-    glutInitWindowSize(550, 550);
-    glutInitWindowPosition(700, 200);
+    glutInitWindowSize(900, 700);
+    glutInitWindowPosition(550, 200);
     glutCreateWindow("Spikes 3D");
 
     /* Registruju se callback funkcije */
@@ -122,8 +133,17 @@ static void on_keyboard(unsigned char key, int x, int y)
 {
     switch (key) {
     case 27:
-        /* Zavrsava se program. */
+        /* Izlaz iz aplikacije */
         exit(0);
+        break;
+
+    case 'g':
+    case 'G':
+        /* Pokrece se animacija. */
+        if (!animation_ongoing) {
+            glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
+            animation_ongoing = 1;
+        }
         break;
 
     case 'r':
@@ -158,20 +178,22 @@ static void on_timer(int value)
 {
     /* Proverava se da li callback dolazi od odgovarajuceg tajmera */
     if (value != TIMER_ID) return;
-    t += 3;
+
+      t += 1;
+      direction += 0.1;
 
     /* Forsira se ponovno iscrtavanje prozora */
     glutPostRedisplay();
 
     if (animation_ongoing) {
-        glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
-    }
+         glutTimerFunc(TIMER_INTERVAL, on_timer, TIMER_ID);
+     }
 }
 
 static void on_display(void)
 {
     /* Pozicija svetla */
-    GLfloat light_position[] = { 1, 1, 1, 0 };
+    GLfloat light_position[] = { 0, 1, -1, 0 };
 
     /* Boje svetla */
     GLfloat light_ambient[] = { 0.3, 0.3, 0.5, 1 };
@@ -179,9 +201,7 @@ static void on_display(void)
     GLfloat light_specular[] = { 0.6, 0.9, 0.6, 1 };
 
     /* Refleksije materijala */
-    GLfloat ambient_coeffs[] = { 0.1, 0.3, 0.6, 1 };
-    GLfloat diffuse_coeffs[] = { 0.1, 0.1, 1, 1 };
-    GLfloat specular_coeffs[] = { 0.2, 0.1, 1, 1 };
+
 
     /* Koeficijent glatkosti materijala */
     GLfloat shininess = 30;
@@ -198,10 +218,7 @@ static void on_display(void)
     glLightfv(GL_LIGHT0, GL_SPECULAR, light_specular);
 
     /* Podesavaju se parametri materijala */
-    glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
-    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+
 
     glShadeModel(GL_SMOOTH);
 
@@ -209,17 +226,27 @@ static void on_display(void)
 
 
     /* Kreiraju se objekati */
+    //crash_report();      TODO
     plot_function();
     r2_function();
+
     coins();
+    Spikes();
+
     /* Funkcija za kretanje */
     keys_press(keys);
 
     score();
-    Scoreboard(buffer, 0,7,2);
+    Scoreboard(buffer);
 
     /* Nova slika se salje na ekran */
     glutSwapBuffers();
+}
+void crash_report(){
+
+  if((x_axis>left_spike[0]-0.5 && x_axis<left_spike[0]+0.5))
+    animation_ongoing = 0;
+
 }
 /* Funkcija koja postavlja x i z koordinate na nasumicnim mestima na tabli */
 void generate_coin(){
@@ -232,76 +259,169 @@ void score(){
     generate_coin();
     Sc = c * 10;
     c++;
-    sprintf(buffer, "%d", Sc);
+    sprintf(buffer, "Score: %d", Sc);
   }
   if((x_axis>x_coin-0.5 && x_axis<x_coin+0.5) && (z_axis>z_coin-0.5 && z_axis<z_coin+0.5))
     k++;
 
 }
 /*prosledjuje se string u kome se cuva trenutni rezultat(Sc) i ispisuje se na ekran*/
-void Scoreboard(char *string,float x,float y,float z)
+void Scoreboard(char *string)
 {
+  int len, i;
   GLfloat s_ambient[] = { 1, 0.9, 0.9, 1 };
 
   glPushMatrix();
-  glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
-  glBegin(GL_LINE_LOOP);
-      glVertex2f(-0.5, 6);
-      glVertex2f(0.7, 6);
-      glVertex2f(0.9, 5.5);
-      glVertex2f(-0.7, 5.5);
-  glEnd();
-  glPopMatrix();
-
-  glPushMatrix();
-  glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
-    glRasterPos3f(x, y, z);
-    int len, i;
+    glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glRasterPos3f(-0.33, 7, 2);
     len = (int)strlen(string);
     for (i = 0; i < len; i++) {
-      glutBitmapCharacter(GLUT_BITMAP_8_BY_13, string[i]);
+      glutBitmapCharacter(GLUT_BITMAP_9_BY_15, string[i]);
     }
   glPopMatrix();
 }
+void Spikes(){
+
+  GLfloat s_ambient[] = { 0.9, 0.4, 0, 1 };
+  GLfloat s_diffuse[] = { 0.9, 0.4, 0, 1 };
+  GLfloat s_specular[] = { 0.9, 0.4, 0, 1 };
+  GLfloat shininess = 40;
+
+  /* Spoljasnji zid*/
+  glPushMatrix();
+    glTranslatef(-X_WALL - 2, 0.5, -0.3);
+    glScalef(0.35, 0.5, Z_WALL * 2 + 3.5);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    glutSolidCube(1);
+  glPopMatrix();
+
+  glPushMatrix();
+    glTranslatef(X_WALL + 2, 0.5, -0.3);
+    glScalef(0.35, 0.5, Z_WALL * 2 + 3.5);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    glutSolidCube(1);
+  glPopMatrix();
+
+  glPushMatrix();
+    glTranslatef(0, 0.5, -Z_WALL - 2);
+    glScalef(X_WALL * 3 - 0.15,0.5,0.35);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    glutSolidCube(1);
+  glPopMatrix();
+
+  glPushMatrix();
+    glTranslatef(0, 0.5, Z_WALL + 1.5);
+    glScalef(X_WALL * 3 - 0.15,0.5,0.35);
+    glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    glutSolidCube(1);
+  glPopMatrix();
+
+  /* SILJCI */
+  if(t%120 == 0)
+    generate_spikes();
+
+  /* left_spike*/
+  left_spike[0] = -X_WALL - 2 + direction;
+  glPushMatrix();
+  glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, s_diffuse);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, s_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
+    glTranslatef(left_spike[0], 0.5, left_spike[1]);
+    glRotatef(90, 0, 1, 0);
+    glutSolidCone(0.2, 0.7, 50, 50);
+  glPopMatrix();
+
+  /*right_spike*/
+  right_spike[0] = X_WALL + 2 - direction;
+  glPushMatrix();
+    glTranslatef(right_spike[0], 0.5, right_spike[1]);
+    glRotatef(-90, 0, 1, 0);
+    glutSolidCone(0.2, 0.7, 50, 50);
+  glPopMatrix();
+
+  /*top_spike*/
+  top_spike[1] = -Z_WALL - 2 + direction;
+  glPushMatrix();
+    glTranslatef(top_spike[0], 0.5, top_spike[1]);
+    //glRotatef(90, 0, 1, 0);
+    glutSolidCone(0.2, 0.7, 50, 50);
+  glPopMatrix();
+
+  /*bottom_spike*/
+  bottom_spike[1] = Z_WALL + 1.5 - direction;
+  glPushMatrix();
+    glTranslatef(bottom_spike[0], 0.5, bottom_spike[1]);
+    glRotatef(180, 0, 1, 0);
+    glutSolidCone(0.2, 0.7, 50, 50);
+  glPopMatrix();
+
+}
+void generate_spikes(){
+
+  direction = 0;
+  left_spike[1] = (double)rand()/RAND_MAX*2.0*Z_WALL-Z_WALL;
+  right_spike[1] = (double)rand()/RAND_MAX*2.0*Z_WALL-Z_WALL;
+  top_spike[0] = (double)rand()/RAND_MAX*2.0*X_WALL-X_WALL;
+  bottom_spike[0] = (double)rand()/RAND_MAX*2.0*X_WALL-X_WALL;
+
+}
 void coins(){
 
-  GLfloat c_ambient[] = { 0.8, 0.7, 0, 1 };
-  GLfloat c_diffuse[] = { 0.4, 0.6, 0.1, 1 };
-  GLfloat c_specular[] = { 0.7, 0.7, 0, 1 };
+  GLfloat c_ambient[] = { 1, 1, 0, 1 };
+  GLfloat c_diffuse[] = { 1, 1, 0, 1 };
+  GLfloat c_specular[] = { 1, 1, 0, 1 };
+  GLfloat shininess = 90;
 
   glPushMatrix();
     glTranslatef(x_coin, 0.3, z_coin);
-    glRotatef(t, 0, 1, 0);
-    glScalef(1,1,0.2);
+    glRotatef(t*4, 0, 1, 0);
+    glScalef(1,1,0.3);
     glMaterialfv(GL_FRONT, GL_AMBIENT, c_ambient);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, c_diffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, c_specular);
+    glMaterialf(GL_FRONT, GL_SHININESS, shininess);
     glutSolidSphere(0.3, 50,50);
   glPopMatrix();
 
 
 }
 void r2_function(){
-  /*
-  TODO: -doraditi figuru za kretanje
-        -dodati teksture
-  */
-  GLfloat r2_ambient[] = { 0.8, 0.1, 0.1, 1 };
-  GLfloat r2_diffuse[] = { 0.5, 0.5, 0.5, 1 };
-  GLfloat r2_specular[] = { 0.6, 0.4, 0.4, 1 };
-  GLfloat s_ambient[] = { 1, 0.9, 0.9, 1 };
+
+  GLfloat r2_ambient[] = { 0.2, 0, 0.8, 1 };
+  GLfloat r2_diffuse[] = { 0.2, 0, 0.8, 1 };
+  GLfloat r2_specular[] = { 0.2, 0, 0.8, 1 };
+  GLfloat rc_ambient[] = { 0.9, 0.9, 0.9, 1 };
+  GLfloat rc_diffuse[] = { 0.9, 0.9, 0.9, 1 };
+  GLfloat rc_specular[] = { 0.9, 0.9, 0.9, 1 };
 
     glPushMatrix();
-      glTranslatef(x_axis, 0.3, z_axis);
+      //Telo(kupa ispod lopte)
+      glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT, rc_ambient);
+      glMaterialfv(GL_FRONT_AND_BACK, GL_DIFFUSE, rc_diffuse);
+      glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, rc_specular);
+      glTranslatef(x_axis, 0.65 , z_axis);
+
+      glRotatef(90, 1,0,0);
+      glutSolidCone(0.3,0.65,40,40);
+      // Glava(lotpa)
       glMaterialfv(GL_FRONT, GL_AMBIENT, r2_ambient);
       glMaterialfv(GL_FRONT, GL_DIFFUSE, r2_diffuse);
       glMaterialfv(GL_FRONT, GL_SPECULAR, r2_specular);
+      glTranslatef(0,0,-0.3);
       glutSolidSphere(0.3, 40, 40);
-      glMaterialfv(GL_FRONT, GL_AMBIENT, s_ambient);
-      glTranslatef(0,0.4,0);
-      glRotatef(-5*t, 0, 0, 1);
-      glScalef(1.7,0.2,0.2);
-      glutSolidSphere(0.2,40,40);
     glPopMatrix();
 }
 
@@ -309,9 +429,9 @@ void set_vertex_and_normal(float u, float v)
 {
     /*
     Parametar koji odredjuje saru na tabli(temu)
-    TODO: vise razlicitih parametara koji ce omogucavati na pocetku igrice da se izabere tema
+    TODO: vise razlicitih parametara koji ce se menjati sa porastom poena
     */
-    float param = (u*v/30+t+(v*v/20)) / 100.0;
+    float param = (u*v/30+(t*3)+(v*v/20)) / 100.0;
     glNormal3f(sin(param), 1, cos(param));
 
     /* Postavljamo verteks */
@@ -324,8 +444,17 @@ void plot_function()
   float scale;
   int u, v;
 
+  GLfloat ambient_coeffs[] = { 0.2, 0.4, 0.1, 1 };
+  GLfloat diffuse_coeffs[] = { 0.2, 0.4, 0.1, 1 };
+  GLfloat specular_coeffs[] = { 0.2, 0.4, 0.1, 1 };
+  GLfloat shininess = 10;
+
   glPushMatrix();
 
+  glMaterialfv(GL_FRONT, GL_AMBIENT, ambient_coeffs);
+  glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse_coeffs);
+  glMaterialfv(GL_FRONT, GL_SPECULAR, specular_coeffs);
+  glMaterialf(GL_FRONT, GL_SHININESS, shininess);
   /* Racunamo faktor skaliranja tako da cela funkcija bude prikazana */
   scale =  10.0/max( U_TO - U_FROM, V_TO - V_FROM );
   glScalef(scale, scale, scale);
